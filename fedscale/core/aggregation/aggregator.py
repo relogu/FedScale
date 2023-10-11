@@ -16,7 +16,10 @@ from fedscale.core.channels import job_api_pb2
 from fedscale.core.resource_manager import ResourceManager
 from fedscale.core.fllibs import *
 
+# FIXME: original 1GB
 MAX_MESSAGE_LENGTH = 1*1024*1024*1024  # 1GB
+# MAX_MESSAGE_LENGTH = 5*1024*1024*1024  # 5GB
+HOURS_4 = 14400000
 
 
 class Aggregator(job_api_pb2_grpc.JobServiceServicer):
@@ -55,6 +58,8 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         # NOTE: if <param_name, param_tensor> (e.g., model.parameters() in PyTorch), then False
         # True, if <param_name, list_param_tensors> (e.g., layer.get_weights() in Tensorflow)
         self.using_group_params = self.args.engine == commons.TENSORFLOW
+        # FIXME:
+        self.total_number_of_samples_this_round = 0
 
         # ======== channels ========
         self.connection_timeout = self.args.connection_timeout
@@ -101,6 +106,12 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
 
         # ======== Task specific ============
         self.init_task_context()
+        
+        # FIXME: added measure of client_id, training_time, n_samples, n_batches of every client trained
+        filename = f"/nfs-share/ls985/fertilizer/traces/{args.job_name}_record_clients.csv"
+        if not os.path.exists(filename):
+            with open(filename, "x") as out:
+                out.write("client_id,training_time,n_samples,n_batches\n")
 
     def setup_env(self):
         """Set up experiments environment and server optimizer
@@ -144,6 +155,15 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
             options=[
                 ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
                 ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
+                # FIXME:
+                ("grpc.http2.max_ping_strikes", 0),
+                ("grpc.http2.max_pings_without_data", 0),
+                ('grpc.keepalive_time_ms', HOURS_4),
+                # ('grpc.max_concurrent_streams', -1),
+                # ('grpc.max_connection_idle_ms', HOURS_4),
+                # ('grpc.max_connection_age_ms', HOURS_4),
+                # ('grpc.max_connection_age_grace_ms', HOURS_4),
+                # ('grpc.client_idle_timeout_ms', HOURS_4),
             ],
         )
         job_api_pb2_grpc.add_JobServiceServicer_to_server(
@@ -238,7 +258,7 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
                 self.client_profiles) if len(self.client_profiles) > 0 else 1
             systemProfile = self.client_profiles.get(
                 mapped_id, {'computation': 1.0, 'communication': 1.0})
-
+            
             clientId = (
                 self.num_of_clients+1) if self.experiment_mode == commons.SIMULATION_MODE else executorId
             self.client_manager.register_client(
@@ -415,6 +435,10 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         # Start to take the average of updates, and we do not keep updates to save memory
         # Importance of each update is 1/#_of_participants
         # importance = 1./self.tasks_round
+        
+        # FIXME:
+        real_weight = results['n_samples']
+        self.total_number_of_samples_this_round += real_weight
 
         for p in results['update_weight']:
             param_weight = results['update_weight'][p]
@@ -424,16 +448,24 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
                 param_weight).to(device=self.device)
 
             if self.model_in_update == 1:
-                self.model_weights[p].data = param_weight
+                # FIXME:
+                # self.model_weights[p].data = param_weight
+                self.model_weights[p].data = real_weight*param_weight
             else:
-                self.model_weights[p].data += param_weight
+                # FIXME:
+                # self.model_weights[p].data += param_weight
+                self.model_weights[p].data += real_weight*param_weight
 
         if self.model_in_update == self.tasks_round:
             for p in self.model_weights:
                 d_type = self.model_weights[p].data.dtype
-
+                # FIXME:
+                # self.model_weights[p].data = (
+                #     self.model_weights[p]/float(self.tasks_round)).to(dtype=d_type)
                 self.model_weights[p].data = (
-                    self.model_weights[p]/float(self.tasks_round)).to(dtype=d_type)
+                    self.model_weights[p]/float(self.total_number_of_samples_this_round)).to(dtype=d_type)
+            # FIXME:
+            self.total_number_of_samples_this_round = 0
 
     def aggregate_client_group_weights(self, results):
         """Streaming weight aggregation. Similar to aggregate_client_weights, 
@@ -517,6 +549,7 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
             max(1, len(self.stats_util_accumulator))
         # assign avg reward to explored, but not ran workers
         for clientId in self.round_stragglers:
+            # NOTE: Oort only
             self.client_manager.register_feedback(clientId, avgUtilLastround,
                                               time_stamp=self.round,
                                               duration=self.virtual_client_clock[clientId]['computation'] +
@@ -533,6 +566,7 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
             self.log_train_result(avg_loss)
 
         # update select participants
+        # NOTE: select 1.3*N participants
         self.sampled_participants = self.select_participants(
             select_num_participants=self.args.num_participants, overcommitment=self.args.overcommitment)
         (clientsToRun, round_stragglers, virtual_client_clock, round_duration, flatten_client_duration) = self.tictak_client_tasks(
@@ -841,6 +875,8 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         executor_id, client_id, event = request.executor_id, request.client_id, request.event
         execution_status, execution_msg = request.status, request.msg
         meta_result, data_result = request.meta_result, request.data_result
+        # # FIXME: added logging at this level to record all the events coming from executors
+        # logging.info(f"Received event {event} from executor {executor_id} about client {client_id}")
 
         if event == commons.CLIENT_TRAIN:
             # Training results may be uploaded in CLIENT_EXECUTE_RESULT request later,
@@ -878,11 +914,13 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
                     self.dispatch_client_events(current_event)
 
                 elif current_event == commons.START_ROUND:
-
+                    
                     self.dispatch_client_events(commons.CLIENT_TRAIN)
 
                 elif current_event == commons.SHUT_DOWN:
                     self.dispatch_client_events(commons.SHUT_DOWN)
+                    # FIXME: added time.sleep(10) to overcome the last round issue
+                    time.sleep(10)
                     break
 
             # Handle events queued on the aggregator

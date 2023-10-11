@@ -3,6 +3,7 @@ import csv
 import logging
 import random
 import time
+import pickle
 from collections import defaultdict
 from random import Random
 
@@ -20,9 +21,16 @@ class Partition(object):
         self.index = index
 
     def __len__(self):
+        # # FIXME: batch_size*local_steps=20*20=400
+        # # return len(self.index)
+        # # ref = 400 # for openimage (batch_size, local_steps)=(20, 20)
+        # ref = 600 # for reddit (batch_size, local_steps)=(20, 30)
+        # return len(self.index) if len(self.index) >= ref else ref
         return len(self.index)
 
     def __getitem__(self, index):
+        # # FIXME: added recursion to handle more local_steps than n_batch
+        # index = index % len(self.index)
         data_idx = self.index[index]
         return self.data[data_idx]
 
@@ -84,6 +92,10 @@ class DataPartitioner(object):
                     self.client_label_cnt[unique_clientIds[client_id]].add(
                         row[-1])
                     sample_id += 1
+        
+        # FIXME: damping of the mapping between new clients IDs and true clients IDs
+        with open('client_mapping', 'wb') as file:
+            pickle.dump(unique_clientIds, file=file)
 
         # Partition data given mapping
         self.partitions = [[] for _ in range(len(unique_clientIds))]

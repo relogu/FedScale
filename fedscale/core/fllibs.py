@@ -133,9 +133,13 @@ def init_model():
         # tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         # model = MobileBertForPreTraining.from_pretrained(model_name)
         # model = AutoModelWithLMHead.from_config(config)
+    
+    # FIXME: added for leaf shakespeare dataset
+    elif parser.args.task == 'shakespeare':
+        from fedscale.utils.models.simple.models import ShakespeareLeafNet
+        model = ShakespeareLeafNet()
 
     elif parser.args.task == 'text_clf':
-
         if parser.args.model == 'albert':
             from transformers import AlbertForSequenceClassification
             config = AutoConfig.from_pretrained(os.path.join(
@@ -272,6 +276,17 @@ def init_dataset():
                                            transform=train_transform)
             test_dataset = datasets.MNIST(parser.args.data_dir, train=False, download=True,
                                           transform=test_transform)
+        # FIXME: added leaf shakespeare dataset
+        elif parser.args.data_set == 'shakespeare':
+            # from fedscale.dataloaders.shakespeare import SHAKESPEARE
+
+            # train_dataset = SHAKESPEARE(parser.args.data_dir, dataset='train')
+            # test_dataset = SHAKESPEARE(parser.args.data_dir, dataset='test')
+            
+            from fedscale.dataloaders.shakespeare import SHAKESPEARE_LOADED
+
+            train_dataset = SHAKESPEARE_LOADED(parser.args.data_dir, dataset='train')
+            test_dataset = SHAKESPEARE_LOADED(parser.args.data_dir, dataset='test')
 
         elif parser.args.data_set == 'cifar10':
             train_transform, test_transform = get_data_transform('cifar')

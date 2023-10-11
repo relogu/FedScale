@@ -4,7 +4,10 @@ import grpc
 
 import fedscale.core.channels.job_api_pb2_grpc as job_api_pb2_grpc
 
+# FIXME: original 1GB
 MAX_MESSAGE_LENGTH = 1*1024*1024*1024  # 1GB
+# MAX_MESSAGE_LENGTH = 5*1024*1024*1024  # 5GB
+HOURS_4 = 14400000
 
 
 class ClientConnections(object):
@@ -24,6 +27,16 @@ class ClientConnections(object):
             options=[
                 ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
                 ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
+                # # FIXME:
+                # ("grpc.http2.max_ping_strikes", 0),
+                # ("grpc.http2.max_pings_without_data", 0),
+                # ('grpc.keepalive_time_ms', HOURS_4),
+                # ('grpc.max_concurrent_streams', -1),
+                # ('grpc.max_connection_idle_ms', HOURS_4),
+                # ('grpc.max_connection_age_ms', HOURS_4),
+                # ('grpc.max_connection_age_grace_ms', HOURS_4),
+                # ('grpc.client_idle_timeout_ms', HOURS_4),
+                
             ]
         )
         self.stub = job_api_pb2_grpc.JobServiceStub(self.channel)

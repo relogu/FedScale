@@ -35,8 +35,9 @@ def load_yaml_conf(yaml_file):
         data = yaml.load(fin, Loader=yaml.FullLoader)
     return data
 
-
-def process_cmd(yaml_file, local=False):
+# FIXME: added one argument to deal with multiple nodes under slurm
+# def process_cmd(yaml_file, local=False):
+def process_cmd(yaml_file, local=False, node=0):
 
     yaml_conf = load_yaml_conf(yaml_file)
 
@@ -112,7 +113,7 @@ def process_cmd(yaml_file, local=False):
     monitor_filename = os.path.join(os.getenv("FEDSCALE_HOME", ""), "benchmark", "logs", "monitor", f"monitor_{time_stamp}_{job_name}.csv")
     monitor_cmd = f"nvidia-smi --query-gpu=timestamp,name,index,pci.bus_id,utilization.gpu,utilization.memory,memory.total,memory.free,memory.used --format=csv --filename={monitor_filename} --loop-ms=1000"
     with open(f"{job_name}_logging", 'a') as fout:
-        subprocess.Popen(monitor_cmd, shell=True, stdout=fout, stderr=fout)
+        monitor_process = subprocess.Popen(monitor_cmd, shell=True, stdout=fout, stderr=fout)
         # if local:
         #     subprocess.Popen(monitor_cmd, shell=True, stdout=fout, stderr=fout)
         # else:
@@ -121,66 +122,76 @@ def process_cmd(yaml_file, local=False):
 
     # =========== Submit job to parameter server ============
     running_vms.add(ps_ip)
-    if use_container == "docker":
-        # store ip, port of each container
-        ctnr_dict = dict()
-        ps_name = f"fedscale-aggr-{time_stamp}"
-        ctnr_dict[ps_name] = {
-            "type": "aggregator",
-            "ip": ps_ip,
-            "port": ports[0]
-        }
-        print(f"Starting aggregator container {ps_name} on {ps_ip}...")
-        ps_cmd = f" docker run -i --name {ps_name} --network {yaml_conf['container_network']} -p {ports[0]}:30000 --mount type=bind,source={yaml_conf['data_path']},target=/FedScale/benchmark fedscale/fedscale-aggr"
-    else:
-        print(f"Starting aggregator on {ps_ip}...")
-        ps_cmd = f"python {yaml_conf['exp_path']}/{yaml_conf['aggregator_entry']} {conf_script} --this_rank=0 --num_executors={total_gpu_processes} --executor_configs={executor_configs} "
-
-    with open(f"{job_name}_logging", 'wb') as fout:
-        pass
-
-    with open(f"{job_name}_logging", 'a') as fout:
-        if local:
-            server_process = subprocess.Popen(f'{ps_cmd}', shell=True, stdout=fout, stderr=fout)
+    # FIXME: just launch one in the parameter server ip
+    if node == 0:
+        if use_container == "docker":
+            # store ip, port of each container
+            ctnr_dict = dict()
+            ps_name = f"fedscale-aggr-{time_stamp}"
+            ctnr_dict[ps_name] = {
+                "type": "aggregator",
+                "ip": ps_ip,
+                "port": ports[0]
+            }
+            print(f"Starting aggregator container {ps_name} on {ps_ip}...")
+            ps_cmd = f" docker run -i --name {ps_name} --network {yaml_conf['container_network']} -p {ports[0]}:30000 --mount type=bind,source={yaml_conf['data_path']},target=/FedScale/benchmark fedscale/fedscale-aggr"
         else:
-            subprocess.Popen(f'ssh {submit_user}{ps_ip} "{setup_cmd} {ps_cmd}"',
-                             shell=True, stdout=fout, stderr=fout)
+            print(f"Starting aggregator on {ps_ip}...")
+            ps_cmd = f"python {yaml_conf['exp_path']}/{yaml_conf['aggregator_entry']} {conf_script} --this_rank=0 --num_executors={total_gpu_processes} --executor_configs={executor_configs} "
+
+        with open(f"{job_name}_logging", 'wb') as fout:
+            pass
+
+        with open(f"{job_name}_logging", 'a') as fout:
+            if local:
+                subprocess.Popen(f'{ps_cmd}', shell=True, stdout=fout, stderr=fout)
+            else:
+                subprocess.Popen(f'ssh {submit_user}{ps_ip} "{setup_cmd} {ps_cmd}"',
+                                shell=True, stdout=fout, stderr=fout)
+    else:
+        print(f"Executing script on node {node}, not launching parameter server")
 
     time.sleep(10)
     # =========== Submit job to each worker ============
-    rank_id = 1
-    for worker, gpu in zip(worker_ips, total_gpus):
-        running_vms.add(worker)
+    # FIXME: differentiating between ips
+    # rank_id = 1
+    rank_id = 1 if node == 0 else sum([sum(list_gpus) for list_gpus in total_gpus[:int(node)]])+1
+    # # loop on the workers
+    # for worker, gpu in zip(worker_ips, total_gpus):
+    worker = worker_ips[node]
+    gpu = total_gpus[node]
+    running_vms.add(worker)
+    if use_container == "default":
+        print(f"Starting workers on {worker} ...")
 
-        if use_container == "default":
-            print(f"Starting workers on {worker} ...")
+    # loop on gpus of the current worker
+    for cuda_id in range(len(gpu)):
+        # loop on the executors of the current gpu
+        for _ in range(gpu[cuda_id]):
+            if use_container == "docker":
+                exec_name = f"fedscale-exec{rank_id}-{time_stamp}"
+                print(f'Starting executor container {exec_name} on {worker}')
+                ctnr_dict[exec_name] = {
+                    "type": "executor",
+                    "ip": worker,
+                    "port": ports[rank_id],
+                    "rank_id": rank_id,
+                    "cuda_id": cuda_id
+                }
+                
+                worker_cmd = f" docker run -i --name fedscale-exec{rank_id}-{time_stamp} --network {yaml_conf['container_network']} -p {ports[rank_id]}:32000 --mount type=bind,source={yaml_conf['data_path']},target=/FedScale/benchmark fedscale/fedscale-exec"
+            else:
+                worker_cmd = f"python {yaml_conf['exp_path']}/{yaml_conf['executor_entry']} {conf_script} --this_rank={rank_id} --num_executors={total_gpu_processes} --cuda_device=cuda:{cuda_id} "
+            rank_id += 1
 
-        for cuda_id in range(len(gpu)):
-            for _ in range(gpu[cuda_id]):
-                if use_container == "docker":
-                    exec_name = f"fedscale-exec{rank_id}-{time_stamp}"
-                    print(f'Starting executor container {exec_name} on {worker}')
-                    ctnr_dict[exec_name] = {
-                        "type": "executor",
-                        "ip": worker,
-                        "port": ports[rank_id],
-                        "rank_id": rank_id,
-                        "cuda_id": cuda_id
-                    }
-                    
-                    worker_cmd = f" docker run -i --name fedscale-exec{rank_id}-{time_stamp} --network {yaml_conf['container_network']} -p {ports[rank_id]}:32000 --mount type=bind,source={yaml_conf['data_path']},target=/FedScale/benchmark fedscale/fedscale-exec"
+            with open(f"{job_name}_logging", 'a') as fout:
+                time.sleep(2)
+                if local:
+                    subprocess.Popen(f'{worker_cmd}',
+                                        shell=True, stdout=fout, stderr=fout)
                 else:
-                    worker_cmd = f"python {yaml_conf['exp_path']}/{yaml_conf['executor_entry']} {conf_script} --this_rank={rank_id} --num_executors={total_gpu_processes} --cuda_device=cuda:{cuda_id} "
-                rank_id += 1
-
-                with open(f"{job_name}_logging", 'a') as fout:
-                    time.sleep(2)
-                    if local:
-                        subprocess.Popen(f'{worker_cmd}',
-                                         shell=True, stdout=fout, stderr=fout)
-                    else:
-                        subprocess.Popen(f'ssh {submit_user}{worker} "{setup_cmd} {worker_cmd}"',
-                                         shell=True, stdout=fout, stderr=fout)
+                    subprocess.Popen(f'ssh {submit_user}{worker} "{setup_cmd} {worker_cmd}"',
+                                        shell=True, stdout=fout, stderr=fout)
 
     # dump the address of running workers
     current_path = os.path.dirname(os.path.abspath(__file__))
@@ -256,7 +267,7 @@ def process_cmd(yaml_file, local=False):
 
     print(f"Submitted job, please check your logs {job_conf['log_path']}/logs/{job_conf['job_name']}/{time_stamp} for status")
     
-    server_process.wait()
+    monitor_process.wait()
 
 
 def terminate(job_name):
@@ -454,7 +465,9 @@ def submit_to_k8s(yaml_conf):
 print_help: bool = False
 if len(sys.argv) > 1:
     if sys.argv[1] == 'submit' or sys.argv[1] == 'start':
-        process_cmd(sys.argv[2], False if sys.argv[1] == 'submit' else True)
+        # FIXME: added argument to deal with multiple nodes under slurm
+        # process_cmd(sys.argv[2], False if sys.argv[1] == 'submit' else True)
+        process_cmd(sys.argv[2], False if sys.argv[1] == 'submit' else True, int(sys.argv[3]))
     elif sys.argv[1] == 'stop':
         terminate(sys.argv[2])
     else:

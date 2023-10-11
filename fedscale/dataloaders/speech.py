@@ -5,7 +5,6 @@ import os
 import warnings
 
 import librosa
-import numba
 import numpy as np
 
 CLASSES = ['up', 'two', 'sheila', 'zero', 'yes', 'five', 'one', 'happy', 'marvin', 'no', 'go', 'seven', 'eight', 'tree', 'stop', 'down', 'forward',

@@ -34,3 +34,15 @@ common_voice
 puffer  
 landmark  
 coqa
+docker/shakespeare*
+docker/openimage*
+docker/reddit*
+docker/google_speech*
+docker/google-speech*
+shakespeare*logging*
+openimage*logging*
+reddit*logging*
+google_speech*logging*
+google-speech*logging*
+nvidia_monitor_running_temp*
+client_mapping

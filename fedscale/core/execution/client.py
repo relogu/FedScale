@@ -1,11 +1,17 @@
 import logging
 import math
-import pickle 
-import torch
-from torch.autograd import Variable
+import pickle
 
+import torch
 from fedscale.core.execution.optimizers import ClientOptimizer
 from fedscale.dataloaders.nlp import mask_tokens
+from torch.autograd import Variable
+from functools import partial
+# FIXME: importation for the PyTorch profiler
+from torch.profiler import ProfilerActivity, profile, record_function
+# FIXME: importation for measuring and dumping training time of clients
+import time
+import os
 
 
 class Client(object):
@@ -49,19 +55,52 @@ class Client(object):
 
         # NOTE: If one may hope to run fixed number of epochs, instead of iterations, 
         # use `while self.completed_steps < conf.local_steps * len(client_data)` instead
-        while self.completed_steps < conf.local_steps:
+        # # FIXME: adding PyTorch profiling
+        # with profile(
+        #     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+        #     schedule=torch.profiler.schedule(
+        #         wait=0,
+        #         warmup=0,
+        #         active=20),
+        #     profile_memory=True,
+        #     with_stack=True,
+        #     with_flops=True,
+        #     with_modules=True,
+        #     on_trace_ready=torch.profiler.tensorboard_trace_handler(f"/nfs-share/ls985/traces/client_{str(clientId)}_trace"),
+        #     record_shapes=True,
+        #     ) as p:
+        t0 = time.time()
+        # while self.completed_steps < conf.local_steps:
+        while self.completed_steps < conf.local_steps * len(client_data):
             try:
                 self.train_step(client_data, conf, model, optimizer, criterion)
+                # # FIXME: for profiling
+                # self.train_step(client_data, conf, model, optimizer, criterion, p)
             except Exception as ex:
                 error_type = ex
                 break
+        t1 = time.time()
+        
+        # FIXME: added measure of client_id, training_time, n_samples, n_batches of every client trained
+        filename = f"/nfs-share/ls985/fertilizer/traces/{conf.job_name}_record_clients.csv"
+        if os.path.exists(filename):
+            with open(filename, "a") as out:
+                out.write(f"{clientId},{t1-t0},{len(client_data.dataset.index)},{int(len(client_data.dataset.index)/20)}\n")
+        else:
+            with open(filename, "x") as out:
+                out.write(f"client_id,training_time,n_samples,n_batches\n{clientId},{t1-t0},{len(client_data.dataset.index)},{int(len(client_data.dataset.index)/20)}\n")
 
         state_dicts = model.state_dict()
         model_param = {p: state_dicts[p].data.cpu().numpy()
                        for p in state_dicts}
-        results = {'clientId': clientId, 'moving_loss': self.epoch_train_loss,
+        results = {'clientId': clientId,
+                   'moving_loss': self.epoch_train_loss,
                    'trained_size': self.completed_steps*conf.batch_size, 
-                   'success': self.completed_steps == conf.local_steps}
+                   'success': self.completed_steps == conf.local_steps,
+                   # FIXME: added dumping of n_samples, n_batches of every client trained
+                   'n_samples': len(client_data.dataset.index),
+                   'n_batches': int(len(client_data.dataset.index)/20)
+                   }
 
         if error_type is None:
             logging.info(f"Training of (CLIENT: {clientId}) completes, {results}")
@@ -123,12 +162,15 @@ class Client(object):
         return criterion
 
     def train_step(self, client_data, conf, model, optimizer, criterion):
+    # def train_step(self, client_data, conf, model, optimizer, criterion, p):
 
-        for data_pair in client_data:
+        for i,data_pair in enumerate(client_data):
             if conf.task == 'nlp':
                 (data, _) = data_pair
-                data, target = mask_tokens(
-                    data, tokenizer, conf, device=conf.device)
+                # FIXME: changed to: data, target = mask_tokens(data, conf.tokenizer, conf, device=conf.device)
+                # for overcoming `tokenizer`-related issue
+                # data, target = mask_tokens(data, tokenizer, conf, device=conf.device)
+                data, target = mask_tokens(data, conf.tokenizer, conf, device=conf.device)
             elif conf.task == 'voice':
                 (data, target, input_percentages,
                     target_sizes), _ = data_pair
@@ -157,6 +199,9 @@ class Client(object):
                 data = Variable(data).to(device=conf.device)
 
             target = Variable(target).to(device=conf.device)
+            
+            if conf.task == 'nlp' and i ==0:
+                logging.info(f"model={model}\ndata.shape={data.shape}\ntarget.shape={target.shape}")
 
             if conf.task == 'nlp':
                 outputs = model(data, labels=target)
@@ -189,7 +234,6 @@ class Client(object):
             else:
                 output = model(data)
                 loss = criterion(output, target)
-
             # ======== collect training feedback for other decision components [e.g., oort selector] ======
 
             if conf.task == 'nlp' or (conf.task == 'text_clf' and conf.model == 'albert-base-v2'):
@@ -221,11 +265,14 @@ class Client(object):
             # ========= Weight handler ========================
             self.optimizer.update_client_weight(
                 conf, model, self.global_model if self.global_model is not None else None)
-
             self.completed_steps += 1
+            
+            # # FIXME: calling step function of profiler
+            # p.step()
 
             if self.completed_steps == conf.local_steps:
                 break
+
 
 
     def test(self, conf):

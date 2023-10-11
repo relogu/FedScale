@@ -39,6 +39,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+from transformers import AlbertTokenizer, PreTrainedTokenizer
+
 N_JOBS = cpu_count()
 logger = logging.getLogger(__name__)
 
@@ -174,6 +176,10 @@ def load_and_cache_examples(args, tokenizer, evaluate=False):
 
 def mask_tokens(inputs, tokenizer, args, device='cpu') -> Tuple[torch.Tensor, torch.Tensor]:
     """ Prepare masked tokens inputs/labels for masked language modeling: 80% MASK, 10% random, 10% original. """
+    if tokenizer is None:
+        tokenizer: PreTrainedTokenizer = AlbertTokenizer.from_pretrained(
+            "albert-base-v2", do_lower_case=True
+        )
     labels = inputs.clone().to(device=device)
     # We sample a few tokens in each sequence for masked-LM training (with probability args.mlm_probability defaults to 0.15 in Bert/RoBERTa)
     probability_matrix = torch.full(
@@ -190,6 +196,10 @@ def mask_tokens(inputs, tokenizer, args, device='cpu') -> Tuple[torch.Tensor, to
         probability_matrix), dtype=torch.bool).detach().to(device=device)
     labels[~masked_indices] = -100  # We only compute loss on masked tokens
 
+    # FIXME: the following warning is printed in the logs
+    # `$FEDSCALE_HOME/fedscale/dataloaders/nlp.py:195: UserWarning: To copy construct from a tensor,
+    # it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True),
+    # rather than torch.tensor(sourceTensor).labels.shape, 0.8)), dtype=torch.bool, device=device) & masked_indices`
     # 80% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
     indices_replaced = torch.tensor(torch.bernoulli(torch.full(
         labels.shape, 0.8)), dtype=torch.bool, device=device) & masked_indices

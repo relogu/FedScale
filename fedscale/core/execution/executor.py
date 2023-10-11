@@ -2,19 +2,23 @@
 import collections
 import gc
 import pickle
+import subprocess
 from argparse import Namespace
 
-import torch
-
 import fedscale.core.channels.job_api_pb2 as job_api_pb2
-import fedscale.core.logger.execution as logger
 import fedscale.core.config_parser as parser
+import fedscale.core.logger.execution as logger
+import torch
 from fedscale.core import commons
 from fedscale.core.channels.channel_context import ClientConnections
 from fedscale.core.execution.client import Client
 from fedscale.core.execution.data_processor import collate, voice_collate_fn
 from fedscale.core.execution.rlclient import RLClient
 from fedscale.core.fllibs import *
+from transformers import AlbertTokenizer, AutoConfig, AutoModelWithLMHead
+
+# FIXME: added to handle different saving paths for different machines for the temporary models
+import socket
 
 
 class Executor(object):
@@ -38,8 +42,19 @@ class Executor(object):
 
         # ======== model and data ========
         self.training_sets = self.test_dataset = None
-        self.temp_model_path = os.path.join(
-            logger.logDir, 'model_'+str(args.this_rank)+'.pth.tar')
+        # FIXME: saving the model on the ssd instead of the hard disk
+        # self.temp_model_path = os.path.join(
+        #     logger.logDir, 'model_'+str(args.this_rank)+'.pth.tar')
+        hostname = socket.gethostname()
+        temp_path_dict = {
+            'mauao': '/local/scratch/fertilizer',
+            'ngongotaha': '/home/ls985/fertilizer',
+            'tarawera': '/home/ls985/fertilizer'
+        }
+        tmppath = os.path.join(f'{temp_path_dict[hostname]}/FedScale/{args.job_name}/')
+        if not os.path.exists(tmppath):
+            os.makedirs(tmppath, exist_ok=True)
+        self.temp_model_path = os.path.join(tmppath, 'model_executor_'+str(args.this_rank)+'.pth.tar')
 
         # ======== channels ========
         self.aggregator_communicator = ClientConnections(
@@ -203,6 +218,9 @@ class Executor(object):
         client_conf = self.override_conf(train_config)
         train_res = self.training_handler(
             clientId=client_id, conf=client_conf, model=model)
+        
+        # # FIXME:
+        # time.sleep(0.05)
 
         # Report execution completion meta information
         response = self.aggregator_communicator.stub.CLIENT_EXECUTE_COMPLETION(
@@ -259,6 +277,13 @@ class Executor(object):
 
         """
         self.round += 1
+        # # FIXME: save a copy of the model every ? rounds
+        # # Dump model to disk
+        # tmp_model_path = os.path.join(
+        #     logger.logDir,
+        #     'model_'+str(self.round)+'.pth.tar')
+        # with open(tmp_model_path, 'wb') as model_out:
+        #     pickle.dump(model, model_out)
 
         # Dump latest model to disk
         with open(self.temp_model_path, 'wb') as model_out:
@@ -319,6 +344,11 @@ class Executor(object):
         client_model = self.load_global_model() if model is None else model
 
         conf.clientId, conf.device = clientId, self.device
+        # FIXME: added from fedscale.core.fllibs import tokenizer
+        # for overcoming `tokenizer`-related issue
+        from fedscale.core.fllibs import tokenizer
+        tokenizer = AlbertTokenizer.from_pretrained(
+            self.args.model, do_lower_case=True)
         conf.tokenizer = tokenizer
         if self.args.task == "rl":
             client_data = self.training_sets
@@ -425,7 +455,10 @@ class Executor(object):
                     train_config['model'] = train_model
                     train_config['client_id'] = int(train_config['client_id'])
                     client_id, train_res = self.Train(train_config)
-
+        
+                    # # FIXME:
+                    # time.sleep(0.1)
+                    
                     # Upload model updates
                     future_call = self.aggregator_communicator.stub.CLIENT_EXECUTE_COMPLETION.future(
                         job_api_pb2.CompleteRequest(client_id=str(client_id), executor_id=self.executor_id,
@@ -442,6 +475,13 @@ class Executor(object):
                     self.UpdateModel(broadcast_config)
 
                 elif current_event == commons.SHUT_DOWN:
+                    # FIXME: closing monitor
+                    subprocess.Popen([f"ps -ef | grep nvidia-smi | grep query | grep {self.args.job_name} > nvidia_monitor_running_temp_{self.executor_id}"], shell=True)
+                    time.sleep(1)
+                    [subprocess.Popen([f'kill -9 {str(l.split()[1])} 1>/dev/null 2>&1'], shell=True) for l in open(f"nvidia_monitor_running_temp_{self.executor_id}").readlines()]
+                    logging.info("Monitor has been closed")
+                    time.sleep(1)
+                    subprocess.Popen([f"rm nvidia_monitor_running_temp_{self.executor_id}"], shell=True)
                     self.Stop()
 
                 elif current_event == commons.DUMMY_EVENT:
@@ -453,4 +493,9 @@ class Executor(object):
 
 if __name__ == "__main__":
     executor = Executor(parser.args)
+    # # FIXME: tested the cProfile
+    # import cProfile
+    # with cProfile.Profile() as pr:  # type: ignore
+    #     executor.run()
+    # pr.print_stats()
     executor.run()
