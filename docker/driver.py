@@ -3,13 +3,11 @@
 import datetime
 import os
 import pickle
-import random
 import shlex
 import subprocess
 import sys
 import time
 import json
-from typing import Dict
 import yaml
 import socket
 
@@ -104,7 +102,7 @@ def process_cmd(yaml_file, local=False):
     if use_container == "docker" and total_gpu_processes + 1 != len(ports):
         print(f'Error: there are {total_gpu_processes + 1} processes but {len(ports)} ports mapped, please check your config file')
         exit(1)
-    
+
     # FIXME: launching automatically the GPU monitor
     # =========== Starting monitoring GPU ==============
     monitor_log_dir = os.path.join(os.getenv("FEDSCALE_HOME", ""), "benchmark", "logs", "monitor")
@@ -136,7 +134,8 @@ def process_cmd(yaml_file, local=False):
         ps_cmd = f" docker run -i --name {ps_name} --network {yaml_conf['container_network']} -p {ports[0]}:30000 --mount type=bind,source={yaml_conf['data_path']},target=/FedScale/benchmark fedscale/fedscale-aggr"
     else:
         print(f"Starting aggregator on {ps_ip}...")
-        ps_cmd = f"python {yaml_conf['exp_path']}/{yaml_conf['aggregator_entry']} {conf_script} --this_rank=0 --num_executors={total_gpu_processes} --executor_configs={executor_configs} "
+        ps_cmd = f"poetry run python {yaml_conf['exp_path']}/{yaml_conf['aggregator_entry']} {conf_script} --this_rank=0 --num_executors={total_gpu_processes} --executor_configs={executor_configs} "
+        # ps_cmd = f"python {yaml_conf['exp_path']}/{yaml_conf['aggregator_entry']} {conf_script} --this_rank=0 --num_executors={total_gpu_processes} --executor_configs={executor_configs} "
 
     with open(f"{job_name}_logging", 'wb') as fout:
         pass
@@ -174,7 +173,8 @@ def process_cmd(yaml_file, local=False):
 
                     worker_cmd = f" docker run -i --name fedscale-exec{rank_id}-{time_stamp} --network {yaml_conf['container_network']} -p {ports[rank_id]}:32000 --mount type=bind,source={yaml_conf['data_path']},target=/FedScale/benchmark fedscale/fedscale-exec"
                 else:
-                    worker_cmd = f"python {yaml_conf['exp_path']}/{yaml_conf['executor_entry']} {conf_script} --this_rank={rank_id} --num_executors={total_gpu_processes} --cuda_device=cuda:{cuda_id} "
+                    worker_cmd = f"poetry run python {yaml_conf['exp_path']}/{yaml_conf['executor_entry']} {conf_script} --this_rank={rank_id} --num_executors={total_gpu_processes} --cuda_device=cuda:{cuda_id} "
+                    # worker_cmd = f"python {yaml_conf['exp_path']}/{yaml_conf['executor_entry']} {conf_script} --this_rank={rank_id} --num_executors={total_gpu_processes} --cuda_device=cuda:{cuda_id} "
                 rank_id += 1
 
                 with open(f"{job_name}_logging", 'a') as fout:
@@ -260,7 +260,7 @@ def process_cmd(yaml_file, local=False):
 
     print(f"Submitted job, please check your logs {job_conf['log_path']}/logs/{job_conf['job_name']}/{time_stamp} for status")
     
-    server_process.wait()
+    local_process.wait()
 
 
 def terminate(job_name):

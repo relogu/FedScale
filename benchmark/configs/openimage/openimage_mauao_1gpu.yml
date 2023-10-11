@@ -22,37 +22,35 @@ setup_commands:
 # ========== Additional job configuration ========== 
 # Default parameters are specified in config_parser.py, wherein more description of the parameter can be found
 job_conf: 
-    - ps_port: 29721
+    - ps_port: 29501
     # Generate logs under this folder: log_path/job_name/time_stamp
-    - job_name: shakespeare_mauao_1gpu
+    - job_name: openimage_mauao_1gpu
     # Path of log files
     - log_path: /nfs-share/ls985/FedScale/benchmark
     # Number of participants per round, we use K=100 in our paper, large K will be much slower
-    - num_participants: 10
+    - num_participants: 100
     # Dataset: openImg, google_speech, stackoverflow
-    - data_set: shakespeare
+    - data_set: openImg
     # Path of the dataset
-    - data_dir: /datasets/FedScale/leaf_shakespeare
+    - data_dir: /datasets/FedScale/openImg
     # Allocation of data to each client, turn to iid setting if not provided
-    - data_map_file: /datasets/FedScale/leaf_shakespeare/client_data_mapping/train.csv
+    - data_map_file: /datasets/FedScale/openImg/client_data_mapping/train.csv
     # Models: e.g., shufflenet_v2_x2_0, mobilenet_v2, resnet34, albert-base-v2±
-    - model: shakespeare
+    - model: shufflenet_v2_x2_0
     # {"fed-yogi", "fed-prox", "fed-avg"}, "fed-avg" by default
-    - gradient_policy: fed-avg
+    - gradient_policy: fed-yogi
     # How many rounds to run a testing on the testing set
     - eval_interval: 5002
     # Number of rounds to run this training. We use 1000 in our paper, while it may converge w/ ~400 rounds
-    - rounds: 10
+    - rounds: 100
     # Remove clients w/ less than `filter_less` samples
-    - filter_less: 4
+    - filter_less: 21
     # Sets the `num_workers` parameter of the `torch.utils.data.DataLoader`
-    - num_loaders: 2
+    - num_loaders: 1
+    - yogi_eta: 3e-3 
+    - yogi_tau: 1e-8
     # We are using epochs, so this is the number of epochs to run
     - local_steps: 1
-    - learning_rate: 0.8
-    - batch_size: 4
-    - test_bsz: 10
-    - malicious_factor: 4
-    - task: shakespeare
-
-
+    - learning_rate: 0.05
+    - batch_size: 20
+    - test_bsz: 20

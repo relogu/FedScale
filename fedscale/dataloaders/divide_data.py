@@ -91,10 +91,6 @@ class DataPartitioner(object):
                     self.client_label_cnt[unique_client_ids[client_id]].add(
                         row[-1])
                     sample_id += 1
-        
-        # FIXME: damping of the mapping between new clients IDs and true clients IDs
-        with open('client_mapping', 'wb') as file:
-            pickle.dump(unique_clientIds, file=file)
 
         # Partition data given mapping
         self.partitions = [[] for _ in range(len(unique_client_ids))]

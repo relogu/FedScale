@@ -4,8 +4,12 @@
 #SBATCH --gres=gpu:a40:1
 #SBATCH --job-name=fedscale_shake
 
-source /nfs-share/ls985/anaconda3/bin/activate fedscale-11
 export FEDSCALE_HOME=/nfs-share/ls985/FedScale
-cd $FEDSCALE_HOME
+DRIVER_SCRIPT=/nfs-share/ls985/FedScale/docker/driver.py
+YAML_CONFIG=/nfs-share/ls985/FedScale/benchmark/configs/shakespeare/shakespeare_mauao_1gpu.yml
+cd /nfs-share/ls985/FedScale
+poetry shell
 
-srun python $FEDSCALE_HOME/docker/driver.py start $FEDSCALE_HOME/benchmark/configs/shakespeare/shakespeare_mauao_1gpu.yml
+srun poetry run python $DRIVER_SCRIPT start $YAML_CONFIG
+
+# srun -w mauao -c 11 --gres=gpu:1 --partition=interactive poetry run python /nfs-share/ls985/FedScale/docker/driver.py start /nfs-share/ls985/FedScale/benchmark/configs/shakespeare/shakespeare_mauao_1gpu.yml

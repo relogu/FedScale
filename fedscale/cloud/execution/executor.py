@@ -3,6 +3,7 @@ import collections
 import gc
 import pickle
 import random
+import subprocess
 import time
 from argparse import Namespace
 
@@ -458,9 +459,4 @@ class Executor(object):
 
 if __name__ == "__main__":
     executor = Executor(parser.args)
-    # # FIXME: tested the cProfile
-    # import cProfile
-    # with cProfile.Profile() as pr:  # type: ignore
-    #     executor.run()
-    # pr.print_stats()
     executor.run()
