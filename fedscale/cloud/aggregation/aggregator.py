@@ -446,28 +446,31 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         # Format:
         #       -results = {'client_id':client_id, 'update_weight': model_param, 'moving_loss': round_train_loss,
         #       'trained_size': count, 'wall_duration': time_cost, 'success': is_success 'utility': utility}
+        
+        if results is not None:
+            if self.args.gradient_policy in ['q-fedavg']:
+                self.client_training_results.append(results)
+            # Feed metrics to client sampler
+            self.stats_util_accumulator.append(results['utility'])
+            self.loss_accumulator.append(results['moving_loss'])
 
-        if self.args.gradient_policy in ['q-fedavg']:
-            self.client_training_results.append(results)
-        # Feed metrics to client sampler
-        self.stats_util_accumulator.append(results['utility'])
-        self.loss_accumulator.append(results['moving_loss'])
+            self.client_manager.register_feedback(results['client_id'], results['utility'],
+                                                auxi=math.sqrt(
+                                                    results['moving_loss']),
+                                                time_stamp=self.round,
+                                                duration=self.virtual_client_clock[results['client_id']]['computation'] +
+                                                        self.virtual_client_clock[results['client_id']]['communication']
+                                                )
 
-        self.client_manager.register_feedback(results['client_id'], results['utility'],
-                                              auxi=math.sqrt(
-                                                  results['moving_loss']),
-                                              time_stamp=self.round,
-                                              duration=self.virtual_client_clock[results['client_id']]['computation'] +
-                                                       self.virtual_client_clock[results['client_id']]['communication']
-                                              )
+            # ================== Aggregate weights ======================
+            self.update_lock.acquire()
 
-        # ================== Aggregate weights ======================
-        self.update_lock.acquire()
+            self.model_in_update += 1
+            self.update_weight_aggregation(results)
 
-        self.model_in_update += 1
-        self.update_weight_aggregation(results)
-
-        self.update_lock.release()
+            self.update_lock.release()
+        else:
+            logging.error("Empty results from client")
 
     def update_weight_aggregation(self, results):
         """Updates the aggregation with the new results.
@@ -638,7 +641,12 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         Returns:
             string, bool, or bytes: The deserialized response object from executor.
         """
-        return pickle.loads(responses)
+        ret = None
+        try:
+            ret = pickle.loads(responses)
+        except Exception as e:
+            logging.error(f"Failed to deserialize response {e}")
+        return ret
 
     def serialize_response(self, responses):
         """ Serialize the response to send to server upon assigned job completion
