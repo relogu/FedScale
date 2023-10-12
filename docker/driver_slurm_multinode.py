@@ -504,8 +504,7 @@ def submit_to_k8s(yaml_conf):
 print_help: bool = False
 if len(sys.argv) > 1:
     if sys.argv[1] == "submit" or sys.argv[1] == "start":
-        # FIXME: added argument to deal with multiple nodes under slurm
-        # process_cmd(sys.argv[2], False if sys.argv[1] == 'submit' else True)
+        # Add argument to deal with multiple nodes under slurm
         process_cmd(
             sys.argv[2], False if sys.argv[1] == "submit" else True, int(sys.argv[3])
         )
