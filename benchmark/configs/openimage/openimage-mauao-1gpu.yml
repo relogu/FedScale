@@ -24,7 +24,7 @@ setup_commands:
 job_conf: 
     - ps_port: 29501
     # Generate logs under this folder: log_path/job_name/time_stamp
-    - job_name: openimage_mauao_1gpu
+    - job_name: openimage-mauao-1gpu
     # Path of log files
     - log_path: /nfs-share/ls985/FedScale/benchmark
     # Number of participants per round, we use K=100 in our paper, large K will be much slower
