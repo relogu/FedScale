@@ -1,13 +1,12 @@
 # Configuration file of FAR training experiment
 # ========== Cluster configuration ========== 
 # IP address of the parameter server (need 1 GPU process)
-ps_ip: 128.232.115.66
+ps_ip: localhost
 # <IP address of each worker>:[<# of available gpus processes on each gpu in this node>]
 # Note that if we collocate ps and worker on same GPU, then we need to decrease this number of available processes on that GPU by 1
 # E.g., master node has 4 available processes, then 1 for the ps, and worker should be set to: worker:3
 worker_ips:
-    - 128.232.115.0:[10,0,0]
-    - 128.232.115.66:[10,10,10]
+    - localhost:[10]
 # Experiment path
 exp_path: /nfs-share/ls985/FedScale/fedscale/cloud
 # Entry function of executor and aggregator under $exp_path
@@ -23,9 +22,9 @@ setup_commands:
 # ========== Additional job configuration ========== 
 # Default parameters are specified in config_parser.py, wherein more description of the parameter can be found
 job_conf: 
-    - ps_port: 29502
+    - ps_port: 29501
     # Generate logs under this folder: log_path/job_name/time_stamp
-    - job_name: openimage_multi_1+3
+    - job_name: openimage_mauao_1gpu
     # Path of log files
     - log_path: /nfs-share/ls985/FedScale/benchmark
     # Number of participants per round, we use K=100 in our paper, large K will be much slower
@@ -45,7 +44,7 @@ job_conf:
     # Number of rounds to run this training. We use 1000 in our paper, while it may converge w/ ~400 rounds
     - rounds: 100
     # Remove clients w/ less than `filter_less` samples
-    - filter_less: 21
+    - filter_less: 20
     # Sets the `num_workers` parameter of the `torch.utils.data.DataLoader`
     - num_loaders: 1
     - yogi_eta: 3e-3 
