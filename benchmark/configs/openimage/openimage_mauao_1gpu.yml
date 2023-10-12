@@ -5,7 +5,7 @@ ps_ip: localhost
 # <IP address of each worker>:[<# of available gpus processes on each gpu in this node>]
 # Note that if we collocate ps and worker on same GPU, then we need to decrease this number of available processes on that GPU by 1
 # E.g., master node has 4 available processes, then 1 for the ps, and worker should be set to: worker:3
-worker_ips: 
+worker_ips:
     - localhost:[10]
 # Experiment path
 exp_path: /nfs-share/ls985/FedScale/fedscale/cloud
@@ -29,13 +29,13 @@ job_conf:
     - log_path: /nfs-share/ls985/FedScale/benchmark
     # Number of participants per round, we use K=100 in our paper, large K will be much slower
     - num_participants: 100
-    # Dataset: openImg, google_speech, stackoverflow
+    # Dataset: openImg, google_speech, blog, shakespeare
     - data_set: openImg
     # Path of the dataset
     - data_dir: /datasets/FedScale/openImg
     # Allocation of data to each client, turn to iid setting if not provided
     - data_map_file: /datasets/FedScale/openImg/client_data_mapping/train.csv
-    # Models: e.g., shufflenet_v2_x2_0, mobilenet_v2, resnet34, albert-base-v2±
+    # Models: e.g., shufflenet_v2_x2_0, mobilenet_v2, resnet34, albert-base-v2, shakespeare
     - model: shufflenet_v2_x2_0
     # {"fed-yogi", "fed-prox", "fed-avg"}, "fed-avg" by default
     - gradient_policy: fed-yogi
