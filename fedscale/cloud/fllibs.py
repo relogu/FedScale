@@ -111,7 +111,7 @@ def init_model():
         # model = MobileBertForPreTraining.from_pretrained(model_name)
         # model = AutoModelWithLMHead.from_config(config)
     
-    # FIXME: added for leaf shakespeare dataset
+    # Add leaf shakespeare model
     elif parser.args.task == 'shakespeare':
         from fedscale.utils.models.simple.models import ShakespeareLeafNet
         model = ShakespeareLeafNet()
@@ -256,13 +256,8 @@ def init_dataset():
                                            transform=train_transform)
             test_dataset = datasets.MNIST(parser.args.data_dir, train=False, download=True,
                                           transform=test_transform)
-        # FIXME: added leaf shakespeare dataset
-        elif parser.args.data_set == 'shakespeare':
-            # from fedscale.dataloaders.shakespeare import SHAKESPEARE
-
-            # train_dataset = SHAKESPEARE(parser.args.data_dir, dataset='train')
-            # test_dataset = SHAKESPEARE(parser.args.data_dir, dataset='test')
-            
+        # Add leaf shakespeare dataset
+        elif parser.args.data_set == 'shakespeare':            
             from fedscale.dataloaders.shakespeare import SHAKESPEARE_LOADED
 
             train_dataset = SHAKESPEARE_LOADED(parser.args.data_dir, dataset='train')

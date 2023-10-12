@@ -103,7 +103,6 @@ def process_cmd(yaml_file, local=False):
         print(f'Error: there are {total_gpu_processes + 1} processes but {len(ports)} ports mapped, please check your config file')
         exit(1)
 
-    # FIXME: launching automatically the GPU monitor
     # =========== Starting monitoring GPU ==============
     monitor_log_dir = os.path.join(os.getenv("FEDSCALE_HOME", ""), "benchmark", "logs", "monitor")
     if not os.path.isdir(monitor_log_dir):

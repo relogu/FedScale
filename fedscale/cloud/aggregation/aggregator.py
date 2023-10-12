@@ -26,7 +26,6 @@ from fedscale.cloud.resource_manager import ResourceManager
 from fedscale.cloud.fllibs import *
 from torch.utils.tensorboard import SummaryWriter
 
-# FIXME: original 1GB
 MAX_MESSAGE_LENGTH = 1*1024*1024*1024  # 1GB
 # MAX_MESSAGE_LENGTH = 5*1024*1024*1024  # 5GB
 HOURS_4 = 14400000
@@ -67,7 +66,6 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         # NOTE: if <param_name, param_tensor> (e.g., model.parameters() in PyTorch), then False
         # True, if <param_name, list_param_tensors> (e.g., layer.get_weights() in Tensorflow)
         self.using_group_params = self.args.engine == commons.TENSORFLOW
-        # FIXME:
         self.total_number_of_samples_this_round = 0
         self.model_weights = None
         self.temp_model_path = os.path.join(
@@ -141,7 +139,7 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         # ======== Task specific ============
         self.init_task_context()
         
-        # FIXME: added measure of client_id, training_time, n_samples, n_batches of every client trained
+        # Added measure of client_id, training_time, n_samples, n_batches of every client trained
         filename = f"/nfs-share/ls985/fertilizer/traces/{args.job_name}_record_clients.csv"
         if not os.path.exists(filename):
             with open(filename, "x") as out:
@@ -187,7 +185,7 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
             options=[
                 ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
                 ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
-                # FIXME:
+                # NOTE: Add some more parameters to help gRPC implementation
                 ("grpc.http2.max_ping_strikes", 0),
                 ("grpc.http2.max_pings_without_data", 0),
                 ('grpc.keepalive_time_ms', HOURS_4),
@@ -867,7 +865,7 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         executor_id, client_id, event = request.executor_id, request.client_id, request.event
         execution_status, execution_msg = request.status, request.msg
         meta_result, data_result = request.meta_result, request.data_result
-        # # FIXME: added logging at this level to record all the events coming from executors
+        # # Log here to record all the events coming from executors
         # logging.info(f"Received event {event} from executor {executor_id} about client {client_id}")
 
         if event == commons.CLIENT_TRAIN:
@@ -914,7 +912,7 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
 
                 elif current_event == commons.SHUT_DOWN:
                     self.dispatch_client_events(commons.SHUT_DOWN)
-                    # FIXME: added time.sleep(10) to overcome the last round issue
+                    # Add time.sleep(10) to overcome the last round issue
                     time.sleep(10)
                     break
 

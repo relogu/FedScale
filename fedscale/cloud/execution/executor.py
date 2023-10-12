@@ -45,9 +45,7 @@ class Executor(object):
 
         # ======== model and data ========
         self.training_sets = self.test_dataset = None
-        # FIXME: saving the model on the ssd instead of the hard disk
-        # self.temp_model_path = os.path.join(
-        #     logger.logDir, 'model_'+str(args.this_rank)+'.pth.tar')
+        # Save the model on the ssd instead of the hard disk
         hostname = socket.gethostname()
         temp_path_dict = {
             'mauao': '/local/scratch/fertilizer',
@@ -310,13 +308,6 @@ class Executor(object):
 
         Returns:
             dictionary: The train result
-
-        conf.clientId, conf.device = clientId, self.device
-        # FIXME: added from fedscale.core.fllibs import tokenizer
-        # for overcoming `tokenizer`-related issue
-        from fedscale.core.fllibs import tokenizer
-        tokenizer = AlbertTokenizer.from_pretrained(
-            self.args.model, do_lower_case=True)
         """
         self.model_adapter.set_weights(model)
         conf.client_id = client_id
@@ -404,9 +395,6 @@ class Executor(object):
                     train_config['model'] = train_model
                     train_config['client_id'] = int(train_config['client_id'])
                     client_id, train_res = self.Train(train_config)
-        
-                    # # FIXME:
-                    # time.sleep(0.1)
                     
                     # Upload model updates
                     future_call = self.aggregator_communicator.stub.CLIENT_EXECUTE_COMPLETION.future(
@@ -424,7 +412,7 @@ class Executor(object):
                     self.UpdateModel(model_weights)
 
                 elif current_event == commons.SHUT_DOWN:
-                    # FIXME: closing monitor
+                    # Close monitor
                     subprocess.Popen([f"ps -ef | grep nvidia-smi | grep query | grep {self.args.job_name} > nvidia_monitor_running_temp_{self.executor_id}"], shell=True)
                     time.sleep(1)
                     [subprocess.Popen([f'kill -9 {str(l.split()[1])} 1>/dev/null 2>&1'], shell=True) for l in open(f"nvidia_monitor_running_temp_{self.executor_id}").readlines()]

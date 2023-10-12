@@ -1,9 +1,6 @@
-import argparse
 import os
 import sys
 import time
-
-# FIXME: put the monitor shutdown
 
 job_name = sys.argv[1]
 

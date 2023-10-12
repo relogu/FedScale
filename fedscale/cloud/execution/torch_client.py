@@ -1,16 +1,10 @@
 import logging
 import math
-import pickle
 
 import torch
 from fedscale.dataloaders.nlp import mask_tokens
 from torch.autograd import Variable
-from functools import partial
 
-# FIXME: importation for the PyTorch profiler
-from torch.profiler import ProfilerActivity, profile, record_function
-
-# FIXME: importation for measuring and dumping training time of clients
 import time
 import os
 import time
@@ -87,7 +81,7 @@ class TorchClient(ClientBase):
                 break
         t1 = time.time()
 
-        # FIXME: added measure of client_id, training_time, n_samples, n_batches of every client trained
+        # Add measure of client_id, training_time, n_samples, n_batches of every client trained
         filename = (
             f"/nfs-share/ls985/fertilizer/traces/{conf.job_name}_record_clients.csv"
         )
@@ -109,7 +103,7 @@ class TorchClient(ClientBase):
             "moving_loss": self.epoch_train_loss,
             "trained_size": self.completed_steps * conf.batch_size,
             "success": self.completed_steps == conf.local_steps,
-            # FIXME: added dumping of n_samples, n_batches of every client trained
+            # Dump n_samples, n_batches of every client trained
             "n_samples": len(client_data.dataset.index),
             "n_batches": int(len(client_data.dataset.index) / 20),
         }
