@@ -412,13 +412,6 @@ class Executor(object):
                     self.UpdateModel(model_weights)
 
                 elif current_event == commons.SHUT_DOWN:
-                    # Close monitor
-                    subprocess.Popen([f"ps -ef | grep nvidia-smi | grep query | grep {self.args.job_name} > nvidia_monitor_running_temp_{self.executor_id}"], shell=True)
-                    time.sleep(1)
-                    [subprocess.Popen([f'kill -9 {str(l.split()[1])} 1>/dev/null 2>&1'], shell=True) for l in open(f"nvidia_monitor_running_temp_{self.executor_id}").readlines()]
-                    logging.info("Monitor has been closed")
-                    time.sleep(1)
-                    subprocess.Popen([f"rm nvidia_monitor_running_temp_{self.executor_id}"], shell=True)
                     self.Stop()
 
                 elif current_event == commons.DUMMY_EVENT:
