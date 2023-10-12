@@ -941,6 +941,7 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
                 # execute every 100 ms
                 time.sleep(0.1)
                 if len(self.sever_events_queue) == 0  and len(self.broadcast_events_queue) == 0 and round_time > 0:
+                    # TODO: Choose a proper factor here
                     if time.time()-real_fucking_clock > 2*round_time:
                         logging.info(f"Real time is {time.time()-real_fucking_clock}")
                         logging.info("We are morons. We lost a client. We are sorry ...")
