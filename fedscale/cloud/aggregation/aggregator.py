@@ -542,9 +542,9 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         logging.info(f"Wall clock: {round(self.global_virtual_clock)} s, round: {self.round}, Planned participants: " +
                      f"{len(self.sampled_participants)}, Succeed participants: {len(self.stats_util_accumulator)}, Training loss: {avg_loss}")
 
-        # dump round completion information to tensorboard
-        if len(self.loss_accumulator):
-            self.log_train_result(avg_loss)
+        # # dump round completion information to tensorboard
+        # if len(self.loss_accumulator):
+        #     self.log_train_result(avg_loss)
 
         # update select participants
         # NOTE: select 1.3*N participants
@@ -580,9 +580,10 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
 
         if self.round >= self.args.rounds:
             self.broadcast_aggregator_events(commons.SHUT_DOWN)
-        elif self.round % self.args.eval_interval == 0 or self.round == 1:
-            self.broadcast_aggregator_events(commons.UPDATE_MODEL)
-            self.broadcast_aggregator_events(commons.MODEL_TEST)
+        # FIXME: Temporarly removed model testing at executors
+        # elif self.round % self.args.eval_interval == 0 or self.round == 1:
+        #     self.broadcast_aggregator_events(commons.UPDATE_MODEL)
+        #     self.broadcast_aggregator_events(commons.MODEL_TEST)
         else:
             self.broadcast_aggregator_events(commons.UPDATE_MODEL)
             self.broadcast_aggregator_events(commons.START_ROUND)
@@ -895,6 +896,9 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         """Activate event handler according to the received new message
         """
         logging.info("Start monitoring events ...")
+        
+        real_fucking_clock = time.time()
+        round_time = 0.0
 
         while True:
             # Broadcast events to clients
@@ -902,10 +906,10 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
                 current_event = self.broadcast_events_queue.popleft()
 
                 if current_event in (commons.UPDATE_MODEL, commons.MODEL_TEST):
+                    real_fucking_clock = time.time()
                     self.dispatch_client_events(current_event)
 
                 elif current_event == commons.START_ROUND:
-                    
                     self.dispatch_client_events(commons.CLIENT_TRAIN)
 
                 elif current_event == commons.SHUT_DOWN:
@@ -922,6 +926,8 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
                     self.client_completion_handler(
                         self.deserialize_response(data))
                     if len(self.stats_util_accumulator) == self.tasks_round:
+                        round_time = time.time() - real_fucking_clock
+                        logging.info(f"Real time is {round_time}")
                         self.round_completion_handler()
 
                 elif current_event == commons.MODEL_TEST:
@@ -934,6 +940,12 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
             else:
                 # execute every 100 ms
                 time.sleep(0.1)
+                if len(self.sever_events_queue) == 0  and len(self.broadcast_events_queue) == 0 and round_time > 0:
+                    if time.time()-real_fucking_clock > 2*round_time:
+                        logging.info(f"Real time is {time.time()-real_fucking_clock}")
+                        logging.info("We are morons. We lost a client. We are sorry ...")
+                        self.round_completion_handler()
+                
 
     def stop(self):
         """Stop the aggregator
