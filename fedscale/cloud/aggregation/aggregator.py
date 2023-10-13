@@ -578,6 +578,9 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         self.client_training_results = []
         self.loss_accumulator = []
         self.update_default_task_config()
+        
+        # NOTE: Adding model saving here
+        self.save_model()
 
         if self.round >= self.args.rounds:
             self.broadcast_aggregator_events(commons.SHUT_DOWN)
@@ -624,13 +627,18 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         """Save model to the wandb server if enabled
         
         """
-        if parser.args.save_checkpoint and self.last_saved_round < self.round:
-            self.last_saved_round = self.round
-            np.save(self.temp_model_path, self.model_weights)
-            if self.wandb != None:
-                artifact = self.wandb.Artifact(name='model_'+str(self.this_rank), type='model')
-                artifact.add_file(local_path=self.temp_model_path)
-                self.wandb.log_artifact(artifact)
+        # NOTE: Forcing model saving whatever the arguments are
+        np.save(os.path.join(
+            logger.logDir,
+            f"global_model_{self.round}.npy"
+        ), self.model_weights)
+        # if parser.args.save_checkpoint and self.last_saved_round < self.round:
+        #     self.last_saved_round = self.round
+        #     np.save(self.temp_model_path, self.model_weights)
+        #     if self.wandb != None:
+        #         artifact = self.wandb.Artifact(name='model_'+str(self.this_rank), type='model')
+        #         artifact.add_file(local_path=self.temp_model_path)
+        #         self.wandb.log_artifact(artifact)
 
     def deserialize_response(self, responses):
         """Deserialize the response from executor
