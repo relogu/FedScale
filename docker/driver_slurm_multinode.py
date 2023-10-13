@@ -105,25 +105,25 @@ def process_cmd(yaml_file, local=False, node=0):
         )
         exit(1)
 
-    # =========== Starting monitoring GPU ==============
-    monitor_log_dir = os.path.join(
-        os.getenv("FEDSCALE_HOME", ""), "benchmark", "logs", "monitor"
-    )
-    if not os.path.isdir(monitor_log_dir):
-        os.makedirs(monitor_log_dir, exist_ok=True)
-    # Now is one monitor per `driver.py` execution
-    monitor_filename = os.path.join(
-        os.getenv("FEDSCALE_HOME", ""),
-        "benchmark",
-        "logs",
-        "monitor",
-        f"monitor_{time_stamp}_{job_name}.csv",
-    )
-    monitor_cmd = f"nvidia-smi --query-gpu=timestamp,name,index,pci.bus_id,utilization.gpu,utilization.memory,memory.total,memory.free,memory.used --format=csv --filename={monitor_filename} --loop-ms=1000"
-    with open(f"{job_name}_logging", "a") as fout:
-        monitor_process = subprocess.Popen(
-            monitor_cmd, shell=True, stdout=fout, stderr=fout
-        )
+    # # =========== Starting monitoring GPU ==============
+    # monitor_log_dir = os.path.join(
+    #     os.getenv("FEDSCALE_HOME", ""), "benchmark", "logs", "monitor"
+    # )
+    # if not os.path.isdir(monitor_log_dir):
+    #     os.makedirs(monitor_log_dir, exist_ok=True)
+    # # Now is one monitor per `driver.py` execution
+    # monitor_filename = os.path.join(
+    #     os.getenv("FEDSCALE_HOME", ""),
+    #     "benchmark",
+    #     "logs",
+    #     "monitor",
+    #     f"monitor_{time_stamp}_{job_name}.csv",
+    # )
+    # monitor_cmd = f"nvidia-smi --query-gpu=timestamp,name,index,pci.bus_id,utilization.gpu,utilization.memory,memory.total,memory.free,memory.used --format=csv --filename={monitor_filename} --loop-ms=1000"
+    # with open(f"{job_name}_logging", "a") as fout:
+    #     monitor_process = subprocess.Popen(
+    #         monitor_cmd, shell=True, stdout=fout, stderr=fout
+    #     )
 
     # =========== Submit job to parameter server ============
     running_vms.add(ps_ip)
@@ -192,7 +192,7 @@ def process_cmd(yaml_file, local=False, node=0):
             with open(f"{job_name}_logging", "a") as fout:
                 time.sleep(2)
                 if local:
-                    subprocess.Popen(
+                    last_process = subprocess.Popen(
                         f"{worker_cmd}", shell=True, stdout=fout, stderr=fout
                     )
                 else:
@@ -294,7 +294,7 @@ def process_cmd(yaml_file, local=False, node=0):
         f"Submitted job, please check your logs {job_conf['log_path']}/logs/{job_conf['job_name']}/{time_stamp} for status"
     )
     # Crucial to wait for something to prevent the current process from terminating
-    monitor_process.wait()
+    last_process.wait()
 
 
 def terminate(job_name):
