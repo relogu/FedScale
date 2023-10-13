@@ -45,17 +45,6 @@ class Executor(object):
 
         # ======== model and data ========
         self.training_sets = self.test_dataset = None
-        # Save the model on the ssd instead of the hard disk
-        hostname = socket.gethostname()
-        temp_path_dict = {
-            'mauao': '/local/scratch/fertilizer',
-            'ngongotaha': '/home/ls985/fertilizer',
-            'tarawera': '/home/ls985/fertilizer'
-        }
-        tmppath = os.path.join(f'{temp_path_dict[hostname]}/FedScale/{args.job_name}/')
-        if not os.path.exists(tmppath):
-            os.makedirs(tmppath, exist_ok=True)
-        self.temp_model_path = os.path.join(tmppath, 'model_executor_'+str(args.this_rank)+'.pth.tar')
 
         # ======== channels ========
         self.aggregator_communicator = ClientConnections(
