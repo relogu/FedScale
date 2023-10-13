@@ -4,6 +4,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:3
 #SBATCH --cpus-per-task=24
+#SBATCH --output=%x-%j.out
+#SBATCH --dependency=afterany:77821
 
 export FEDSCALE_HOME=/nfs-share/ls985/FedScale
 DRIVER_SCRIPT=/nfs-share/ls985/FedScale/docker/driver_slurm_multinode.py

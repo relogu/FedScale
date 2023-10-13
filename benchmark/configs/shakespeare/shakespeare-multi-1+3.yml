@@ -1,13 +1,13 @@
 # Configuration file of FAR training experiment
 # ========== Cluster configuration ========== 
 # IP address of the parameter server (need 1 GPU process)
-ps_ip: 128.232.115.66
+ps_ip: 128.232.115.0
 # <IP address of each worker>:[<# of available gpus processes on each gpu in this node>]
 # Note that if we collocate ps and worker on same GPU, then we need to decrease this number of available processes on that GPU by 1
 # E.g., master node has 4 available processes, then 1 for the ps, and worker should be set to: worker:3
 worker_ips:
-    - 128.232.115.0:[10,0,0]
-    - 128.232.115.66:[10,10,10]
+    - 128.232.115.0:[3,0,0]
+    - 128.232.115.66:[3,3,2]
 # Experiment path
 exp_path: /nfs-share/ls985/FedScale/fedscale/cloud
 # Entry function of executor and aggregator under $exp_path
@@ -43,7 +43,7 @@ job_conf:
     # How many rounds to run a testing on the testing set
     - eval_interval: 5002
     # Number of rounds to run this training. We use 1000 in our paper, while it may converge w/ ~400 rounds
-    - rounds: 10
+    - rounds: 110
     # Remove clients w/ less than `filter_less` samples
     - filter_less: 10
     # Sets the `num_workers` parameter of the `torch.utils.data.DataLoader`

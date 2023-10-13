@@ -2,6 +2,7 @@
 #SBATCH --job-name=SR1
 #SBATCH --cpus-per-task 11
 #SBATCH -w mauao
+#SBATCH --output=%x-%j.out
 #SBATCH --gres=gpu:a40:1
 
 export FEDSCALE_HOME=/nfs-share/ls985/FedScale

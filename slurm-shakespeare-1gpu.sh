@@ -3,6 +3,8 @@
 #SBATCH --cpus-per-task 11
 #SBATCH -w mauao
 #SBATCH --gres=gpu:a40:1
+#SBATCH --output=%x-%j.out
+#SBATCH --dependency=afterany:77824
 
 export FEDSCALE_HOME=/nfs-share/ls985/FedScale
 DRIVER_SCRIPT=/nfs-share/ls985/FedScale/docker/driver.py

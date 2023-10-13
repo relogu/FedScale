@@ -3,6 +3,7 @@
 #SBATCH --nodelist=ngongotaha,mauao
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:3
+#SBATCH --output=%x-%j.out
 #SBATCH --cpus-per-task=24
 
 export FEDSCALE_HOME=/nfs-share/ls985/FedScale

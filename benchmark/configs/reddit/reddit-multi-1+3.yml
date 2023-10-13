@@ -44,7 +44,7 @@ job_conf:
     # How many rounds to run a testing on the testing set
     - eval_interval: 5001
     # Number of rounds to run this training. We use 1000 in our paper, while it may converge w/ ~400 rounds
-    - rounds: 100
+    - rounds: 110
     # Remove clients w/ less than `filter_less` samples
     - filter_less: 21
     # Sets the `num_workers` parameter of the `torch.utils.data.DataLoader`
