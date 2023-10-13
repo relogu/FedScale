@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=fedscale-openimage-1+3
+#SBATCH --job-name=SO13
 #SBATCH --nodelist=ngongotaha,mauao
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:3

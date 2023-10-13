@@ -1,13 +1,13 @@
 # Configuration file of FAR training experiment
 # ========== Cluster configuration ========== 
 # IP address of the parameter server (need 1 GPU process)
-ps_ip: 128.232.115.66
+ps_ip: 128.232.115.0
 # <IP address of each worker>:[<# of available gpus processes on each gpu in this node>]
 # Note that if we collocate ps and worker on same GPU, then we need to decrease this number of available processes on that GPU by 1
 # E.g., master node has 4 available processes, then 1 for the ps, and worker should be set to: worker:3
 worker_ips:
     - 128.232.115.0:[1,0,0]
-    - 128.232.115.66:[1,1,1]
+    - 128.232.115.66:[1,0,0]
 # Experiment path
 exp_path: /nfs-share/ls985/FedScale/fedscale/cloud
 # Entry function of executor and aggregator under $exp_path

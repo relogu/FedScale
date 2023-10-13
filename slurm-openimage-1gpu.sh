@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=fedscale-openimage-1gpu
+#SBATCH --job-name=SO1
 #SBATCH --cpus-per-task 11
 #SBATCH -w mauao
 #SBATCH --gres=gpu:a40:1
