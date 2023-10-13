@@ -628,10 +628,10 @@ class Aggregator(job_api_pb2_grpc.JobServiceServicer):
         
         """
         # NOTE: Forcing model saving whatever the arguments are
-        np.save(os.path.join(
+        torch.save(self.model_wrapper.model.state_dict(), os.path.join(
             logger.logDir,
-            f"global_model_{self.round}.npy"
-        ), self.model_weights)
+            f"global_model_{self.round}.pth"
+        ))
         # if parser.args.save_checkpoint and self.last_saved_round < self.round:
         #     self.last_saved_round = self.round
         #     np.save(self.temp_model_path, self.model_weights)
