@@ -1,5 +1,6 @@
 *_logging
 slurm-*.out
+*.out
 *.csv
 *.pyc*
 benchmark/logs/*
