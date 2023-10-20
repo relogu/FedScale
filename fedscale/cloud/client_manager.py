@@ -215,7 +215,8 @@ class ClientManager:
         clients_online = self.getFeasibleClients(cur_time)
 
         if len(clients_online) <= num_of_clients:
-            return clients_online
+            logging.info(f"Despite only {len(clients_online)} clients online, we will sample {num_of_clients} clients by sampling with replacement.")
+            return self.rng.choices(clients_online, k=num_of_clients)
 
         pickled_clients = None
         clients_online_set = set(clients_online)
