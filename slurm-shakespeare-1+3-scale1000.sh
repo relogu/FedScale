@@ -1,15 +1,16 @@
 #!/bin/bash
-#SBATCH --job-name=SR13
+#SBATCH --job-name=SS13-scale
 #SBATCH --nodelist=ngongotaha,mauao
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:3
 #SBATCH --output=%x-%j.out
 #SBATCH --cpus-per-task=24
-#SBATCH --dependency=afterany:78046
+#SBATCH --time=04:00:00
+#SBATCH --dependency=afterany:78067
 
 export FEDSCALE_HOME=/nfs-share/ls985/FedScale
 DRIVER_SCRIPT=/nfs-share/ls985/FedScale/docker/driver_slurm_multinode.py
-YAML_CONFIG=/nfs-share/ls985/FedScale/benchmark/configs/reddit/reddit-multi-1+3.yml
+YAML_CONFIG=/nfs-share/ls985/FedScale/benchmark/configs/shakespeare/shakespeare-multi-1+3-scale1000.yml
 cd /nfs-share/ls985/FedScale
 poetry shell
 

@@ -6,8 +6,8 @@ ps_ip: 128.232.115.0
 # Note that if we collocate ps and worker on same GPU, then we need to decrease this number of available processes on that GPU by 1
 # E.g., master node has 4 available processes, then 1 for the ps, and worker should be set to: worker:3
 worker_ips:
-    - 128.232.115.0:[3,0,0]
-    - 128.232.115.66:[3,3,2]
+    - 128.232.115.0:[24,0,0]
+    - 128.232.115.66:[8,8,8]
 # Experiment path
 exp_path: /nfs-share/ls985/FedScale/fedscale/cloud
 # Entry function of executor and aggregator under $exp_path
@@ -29,7 +29,7 @@ job_conf:
     # Path of log files
     - log_path: /nfs-share/ls985/FedScale/benchmark
     # Number of participants per round, we use K=100 in our paper, large K will be much slower
-    - num_participants: 10
+    - num_participants: 100
     # Dataset: openImg, google_speech, blog, shakespeare
     - data_set: shakespeare
     # Path of the dataset

@@ -1,12 +1,13 @@
 # Configuration file of FAR training experiment
 # ========== Cluster configuration ========== 
 # IP address of the parameter server (need 1 GPU process)
-ps_ip: localhost
+ps_ip: 128.232.115.0
 # <IP address of each worker>:[<# of available gpus processes on each gpu in this node>]
 # Note that if we collocate ps and worker on same GPU, then we need to decrease this number of available processes on that GPU by 1
 # E.g., master node has 4 available processes, then 1 for the ps, and worker should be set to: worker:3
-worker_ips: 
-    - localhost:[24]
+worker_ips:
+    - 128.232.115.0:[19,0,0]
+    - 128.232.115.66:[6,6,6]
 # Experiment path
 exp_path: /nfs-share/ls985/FedScale/fedscale/cloud
 # Entry function of executor and aggregator under $exp_path
@@ -22,37 +23,36 @@ setup_commands:
 # ========== Additional job configuration ========== 
 # Default parameters are specified in config_parser.py, wherein more description of the parameter can be found
 job_conf: 
-    - ps_port: 29505
+    - ps_port: 29504
     # Generate logs under this folder: log_path/job_name/time_stamp
-    - job_name: shakespeare-mauao-1gpu
+    - job_name: google_speech-multi-1+3-scale2000
     # Path of log files
     - log_path: /nfs-share/ls985/FedScale/benchmark
     # Number of participants per round, we use K=100 in our paper, large K will be much slower
-    - num_participants: 100
+    - num_participants: 2000
     # Dataset: openImg, google_speech, blog, shakespeare
-    - data_set: shakespeare
+    - data_set: google_speech 
     # Path of the dataset
-    - data_dir: /datasets/FedScale/leaf_shakespeare
+    - data_dir: /datasets/FedScale/google_speech/google_speech
     # Allocation of data to each client, turn to iid setting if not provided
-    - data_map_file: /datasets/FedScale/leaf_shakespeare/client_data_mapping/train.csv
+    - data_map_file: /datasets/FedScale/google_speech/google_speech/client_data_mapping/train.csv
     # Models: e.g., shufflenet_v2_x2_0, mobilenet_v2, resnet34, albert-base-v2, shakespeare
-    - model: shakespeare
+    - model: resnet34
     # {"fed-yogi", "fed-prox", "fed-avg"}, "fed-avg" by default
     - gradient_policy: fed-avg
     # How many rounds to run a testing on the testing set
-    - eval_interval: 5002
+    - eval_interval: 5000
     # Number of rounds to run this training. We use 1000 in our paper, while it may converge w/ ~400 rounds
-    - rounds: 110
+    - rounds: 6
     # Remove clients w/ less than `filter_less` samples
-    - filter_less: 10
+    - filter_less: 20
     # Sets the `num_workers` parameter of the `torch.utils.data.DataLoader`
-    - num_loaders: 1
+    - num_loaders: 4
+    # - yogi_eta: 3e-3 
+    # - yogi_tau: 1e-8
     # We are using epochs, so this is the number of epochs to run
     - local_steps: 1
-    - learning_rate: 0.8
-    - batch_size: 10
-    - test_bsz: 10
-    - malicious_factor: 4
-    - task: shakespeare
-
-
+    - learning_rate: 0.05
+    - batch_size: 20
+    - test_bsz: 20
+    - task: speech
